@@ -8,3 +8,7 @@ const rl = createInterface({
 
 // TODO: Uncomment the code below to pass the first stage
 rl.prompt();
+
+rl.on('line', (command) => {
+  console.log(command, " command not found")
+})
