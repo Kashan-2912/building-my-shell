@@ -1,6 +1,7 @@
 import path from "path";
 import { createInterface } from "readline";
 import fs from "fs";
+import { spawn } from "child_process";
 
 const rl = createInterface({
   input: process.stdin,
@@ -12,6 +13,7 @@ const rl = createInterface({
 rl.prompt();
 
 rl.on("line", (command) => {
+  
   if (command === "exit") {
     rl.close();
     return;
@@ -21,7 +23,6 @@ rl.on("line", (command) => {
     return;
   } else if (command.startsWith("type ")) {
     const commandName = command.slice(5);
-
     if (
       commandName === "type" ||
       commandName === "echo" ||
@@ -40,10 +41,8 @@ rl.on("line", (command) => {
         const commandPath = path.join(dir, commandName);
 
         try {
-          if (
-            fs.existsSync(commandPath)
-          ) {
-            fs.accessSync(commandPath, fs.constants.X_OK)
+          if (fs.existsSync(commandPath)) {
+            fs.accessSync(commandPath, fs.constants.X_OK);
             console.log(`${commandName} is ${commandPath}`);
             rl.prompt();
             return;
@@ -57,7 +56,20 @@ rl.on("line", (command) => {
       rl.prompt();
     }
   } else {
-    console.log(`${command}: command not found`);
-    rl.prompt();
+    const args = command.split(" ");
+    const programName = args[0];
+    const programArgs = args.slice(1);
+    try {
+      const child = spawn(programName, programArgs, { stdio: "inherit" });
+      child.on("error", () => {
+        console.log(`${command}: not found`);
+        rl.prompt();
+      });
+      child.on("close", () => {
+        rl.prompt();
+      });
+    } catch (error) {
+      // Ignore errors
+    }
   }
 });
