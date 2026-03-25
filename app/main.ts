@@ -61,18 +61,29 @@ rl.on("line", (command) => {
     return;
   } else if (command.startsWith("cd ")) {
     const dir = command.slice(3);
-    //  handling both absolute and relative paths...
-    const targetDir = path.isAbsolute(dir) ? dir : path.join(process.cwd(), dir);
-    try {
-      if(existsSync(targetDir)) {
-        process.chdir(targetDir);
-        rl.prompt();
-      } else {
-        console.log(`cd: ${dir}: No such file or directory`);
+
+    if (dir === "~") {
+      const homeDir = process.env.HOME;
+      if(homeDir) {
+        process.chdir(homeDir);
         rl.prompt();
       }
-    } catch (error) {
-      // Ignore errors
+    } else {
+      //  handling absolute paths...
+      const targetDir = path.isAbsolute(dir)
+        ? dir
+        : path.join(process.cwd(), dir);
+      try {
+        if (existsSync(targetDir)) {
+          process.chdir(targetDir);
+          rl.prompt();
+        } else {
+          console.log(`cd: ${dir}: No such file or directory`);
+          rl.prompt();
+        }
+      } catch (error) {
+        // Ignore errors
+      }
     }
   } else {
     const args = command.split(" ");
