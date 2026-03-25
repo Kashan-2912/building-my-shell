@@ -61,7 +61,7 @@ rl.on("line", (command) => {
     return;
   } else if (command.startsWith("cd ")) {
     const dir = command.slice(3);
-    //  handling absolute paths...
+    //  handling both absolute and relative paths...
     const targetDir = path.isAbsolute(dir) ? dir : path.join(process.cwd(), dir);
     try {
       if(existsSync(targetDir)) {
