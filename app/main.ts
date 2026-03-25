@@ -1,6 +1,6 @@
 import path from "path";
 import { createInterface } from "readline";
-import fs from "fs";
+import fs, { existsSync } from "fs";
 import { spawn } from "child_process";
 
 const rl = createInterface({
@@ -59,6 +59,21 @@ rl.on("line", (command) => {
     console.log(process.cwd());
     rl.prompt();
     return;
+  } else if (command.startsWith("cd ")) {
+    const dir = command.slice(3);
+    //  handling absolute paths...
+    const targetDir = path.isAbsolute(dir) ? dir : path.join(process.cwd(), dir);
+    try {
+      if(existsSync(targetDir)) {
+        process.chdir(targetDir);
+        rl.prompt();
+      } else {
+        console.log(`cd: ${dir}: No such file or directory`);
+        rl.prompt();
+      }
+    } catch (error) {
+      // Ignore errors
+    }
   } else {
     const args = command.split(" ");
     const programName = args[0];
