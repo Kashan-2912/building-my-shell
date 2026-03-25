@@ -14,13 +14,22 @@ const rl = createInterface({
 function parseArgs(input: string): string[] {
   const res: string[] = [];
   let cur = "";
-  let inQuote = false;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
 
   for (const ch of input) {
     if (ch === "'") {
-      inQuote = !inQuote;
-    } else if (ch === " " && !inQuote) {
+      if(inDoubleQuote) {
+        cur += "'";
+      } else {
+        inSingleQuote = !inSingleQuote;
+      }
+    } else if (ch === '"') {
+      inDoubleQuote = !inDoubleQuote;
+    } else if (ch === " " && !inSingleQuote && !inDoubleQuote) {
       if (cur) (res.push(cur), (cur = ""));
+    } else if (inDoubleQuote && ch === "'") {
+      cur += "'";
     } else {
       cur += ch;
     }
