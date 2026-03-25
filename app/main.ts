@@ -9,7 +9,28 @@ const rl = createInterface({
   prompt: "$ ",
 });
 
-// TODO: Uncomment the code below to pass the first stage
+// ======================================== HELPERS ========================================
+
+function parseArgs(input: string): string[] {
+  const res: string[] = [];
+  let cur = "";
+  let inQuote = false;
+
+  for (const ch of input) {
+    if (ch === "'") {
+      inQuote = !inQuote;
+    } else if (ch === " " && !inQuote) {
+      if (cur) (res.push(cur), (cur = ""));
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur) res.push(cur);
+  return res;
+}
+
+// ======================================== HELPERS ========================================
+
 rl.prompt();
 
 rl.on("line", (command) => {
@@ -17,7 +38,8 @@ rl.on("line", (command) => {
     rl.close();
     return;
   } else if (command.startsWith("echo ")) {
-    console.log(command.slice(5));
+    const args = parseArgs(command);
+    console.log(args.slice(1).join(" "));
     rl.prompt();
     return;
   } else if (command.startsWith("type ")) {
@@ -64,7 +86,7 @@ rl.on("line", (command) => {
 
     if (dir === "~") {
       const homeDir = process.env.HOME;
-      if(homeDir) {
+      if (homeDir) {
         process.chdir(homeDir);
         rl.prompt();
       }
@@ -86,7 +108,8 @@ rl.on("line", (command) => {
       }
     }
   } else {
-    const args = command.split(" ");
+    // const args = command.split(" ");
+    const args = parseArgs(command);
     const programName = args[0];
     const programArgs = args.slice(1);
     try {
