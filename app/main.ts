@@ -13,7 +13,6 @@ const rl = createInterface({
 rl.prompt();
 
 rl.on("line", (command) => {
-  
   if (command === "exit") {
     rl.close();
     return;
@@ -26,7 +25,8 @@ rl.on("line", (command) => {
     if (
       commandName === "type" ||
       commandName === "echo" ||
-      commandName === "exit"
+      commandName === "exit" ||
+      commandName === "pwd"
     ) {
       console.log(`${commandName} is a shell builtin`);
       rl.prompt();
@@ -55,6 +55,10 @@ rl.on("line", (command) => {
       console.log(`${commandName}: not found`);
       rl.prompt();
     }
+  } else if (command === "pwd") {
+    console.log(process.cwd());
+    rl.prompt();
+    return;
   } else {
     const args = command.split(" ");
     const programName = args[0];
