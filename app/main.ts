@@ -17,7 +17,7 @@ function parseArgs(input: string): string[] {
   let inSingleQuote = false;
   let inDoubleQuote = false;
 
-  for (let ch=0; ch < input.length; ch++) {
+  for (let ch = 0; ch < input.length; ch++) {
     if (input[ch] === "'") {
       if (inDoubleQuote) {
         cur += "'";
@@ -25,30 +25,29 @@ function parseArgs(input: string): string[] {
         inSingleQuote = !inSingleQuote;
       }
     } else if (input[ch] === '"') {
-      inDoubleQuote = !inDoubleQuote;
-    } else if (input[ch] === " " && !inSingleQuote && !inDoubleQuote) {
-      if (cur) (res.push(cur), (cur = ""));
-    } else if (input[ch] === "\\" && input[ch + 1] === " " && !inSingleQuote && !inDoubleQuote) {
-      cur += `${input[ch + 1]}`;
-      ch++;
-    } else if (input[ch] === "\\" && input[ch + 1] !== " " && !inSingleQuote && !inDoubleQuote) {
-      if(input[ch + 1] === "\\") {
-        cur += `${input[ch + 1]}`;
-        ch++;
-      } else if (input[ch + 1] === "'") {
-        cur += "'";
-        ch++;
-      } else if (input[ch + 1] === '"') {
+      if(inSingleQuote) {
         cur += '"';
+      } else {
+        inDoubleQuote = !inDoubleQuote;
+      }
+    } else if (input[ch] === " " && !inSingleQuote && !inDoubleQuote) {
+      if (cur) {
+        res.push(cur);
+        cur = "";
+      }
+    } else if (input[ch] === "\\" && input[ch + 1] === " " && !inSingleQuote && !inDoubleQuote) {
+      cur += input[ch + 1];
+      ch++;
+    } else if (input[ch] === "\\" && input[ch + 1] !== " " && !inSingleQuote &&! inDoubleQuote) {
+      if (input[ch + 1] === "\\" || input[ch + 1] === "'" || input[ch + 1] === '"') {
+        cur += input[ch + 1];
         ch++;
       }
-      cur += "";
-    } else if (inDoubleQuote && input[ch] === "'") {
-      cur += "'";
     } else {
       cur += input[ch];
     }
   }
+
   if (cur) res.push(cur);
   return res;
 }
