@@ -38,8 +38,13 @@ function parseArgs(input: string): string[] {
     } else if (input[ch] === "\\" && input[ch + 1] === " " && !inSingleQuote && !inDoubleQuote) {
       cur += input[ch + 1];
       ch++;
-    } else if (input[ch] === "\\" && input[ch + 1] !== " " && !inSingleQuote &&! inDoubleQuote) {
+    } else if (input[ch] === "\\" && input[ch + 1] !== " " && !inSingleQuote && !inDoubleQuote) {
       if (input[ch + 1] === "\\" || input[ch + 1] === "'" || input[ch + 1] === '"') {
+        cur += input[ch + 1];
+        ch++;
+      }
+    } else if (input[ch] === "\\" && input[ch + 1] !== " " && !inSingleQuote && inDoubleQuote) {
+      if (input[ch + 1] === "\\" || input[ch + 1] === '"') {
         cur += input[ch + 1];
         ch++;
       }
