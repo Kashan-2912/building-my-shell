@@ -17,21 +17,36 @@ function parseArgs(input: string): string[] {
   let inSingleQuote = false;
   let inDoubleQuote = false;
 
-  for (const ch of input) {
-    if (ch === "'") {
-      if(inDoubleQuote) {
+  for (let ch=0; ch < input.length; ch++) {
+    if (input[ch] === "'") {
+      if (inDoubleQuote) {
         cur += "'";
       } else {
         inSingleQuote = !inSingleQuote;
       }
-    } else if (ch === '"') {
+    } else if (input[ch] === '"') {
       inDoubleQuote = !inDoubleQuote;
-    } else if (ch === " " && !inSingleQuote && !inDoubleQuote) {
+    } else if (input[ch] === " " && !inSingleQuote && !inDoubleQuote) {
       if (cur) (res.push(cur), (cur = ""));
-    } else if (inDoubleQuote && ch === "'") {
+    } else if (input[ch] === "\\" && input[ch + 1] === " " && !inSingleQuote && !inDoubleQuote) {
+      cur += `${input[ch + 1]}`;
+      ch++;
+    } else if (input[ch] === "\\" && input[ch + 1] !== " " && !inSingleQuote && !inDoubleQuote) {
+      if(input[ch + 1] === "\\") {
+        cur += `${input[ch + 1]}`;
+        ch++;
+      } else if (input[ch + 1] === "'") {
+        cur += "'";
+        ch++;
+      } else if (input[ch + 1] === '"') {
+        cur += '"';
+        ch++;
+      }
+      cur += "";
+    } else if (inDoubleQuote && input[ch] === "'") {
       cur += "'";
     } else {
-      cur += ch;
+      cur += input[ch];
     }
   }
   if (cur) res.push(cur);
@@ -100,7 +115,6 @@ rl.on("line", (command) => {
         rl.prompt();
       }
     } else {
-      //  handling absolute paths...
       const targetDir = path.isAbsolute(dir)
         ? dir
         : path.join(process.cwd(), dir);
@@ -117,7 +131,6 @@ rl.on("line", (command) => {
       }
     }
   } else {
-    // const args = command.split(" ");
     const args = parseArgs(command);
     const programName = args[0];
     const programArgs = args.slice(1);
