@@ -29,7 +29,7 @@ function tabCompleter(line: string) {
   const parts = line.split(" ");
   const last = parts[parts.length - 1];
 
-  let commands = new Set<string>(builtins);
+  const commands = new Set<string>(builtins);
 
   for (const dir of normalized) {
     try {
@@ -57,17 +57,42 @@ function tabCompleter(line: string) {
     lastPrefix = last;
   }
 
-  // No matches
-  if (!hits.length) {
+  // ❌ No matches → bell
+  if (hits.length === 0) {
     process.stdout.write("\x07");
     return [[], line];
   }
 
-  // Single match → autocomplete
+  // ✅ Single match → complete with space
   if (hits.length === 1) {
     tabCount = 0;
-    return [[hits[0] + " "], last];
+    const newLine =
+      line.slice(0, line.length - last.length) + hits[0] + " ";
+    return [[newLine], line];
   }
+
+  // Compute LCP
+  const commonPrefix = hits.reduce((prefix, cmd) => {
+    let i = 0;
+    while (
+      i < prefix.length &&
+      i < cmd.length &&
+      prefix[i] === cmd[i]
+    ) {
+      i++;
+    }
+    return prefix.slice(0, i);
+  });
+
+  // If LCP extends input → autocomplete
+  if (commonPrefix.length > last.length) {
+    tabCount = 0;
+    const newLine =
+      line.slice(0, line.length - last.length) + commonPrefix;
+    return [[newLine], line];
+  }
+
+  // No LCP progress → handle TAB behavior
 
   // First TAB → bell
   if (tabCount === 1) {
@@ -75,7 +100,7 @@ function tabCompleter(line: string) {
     return [[], line];
   }
 
-  // Second TAB → print matches
+  // Second TAB → show matches
   console.log("\n" + hits.join("  "));
   process.stdout.write(`$ ${line}`);
 
