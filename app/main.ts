@@ -2,6 +2,7 @@ import path from "path";
 import { createInterface } from "readline";
 import fs, { existsSync, createWriteStream } from "fs";
 import { spawn } from "child_process";
+import { file } from "bun";
 
 const rl = createInterface({
   input: process.stdin,
@@ -58,18 +59,26 @@ function parseArgs(input: string): string[] {
 }
 
 function handleRedirection(args: string[]) {
-  let outputFile: string | null = null;
+  let stdoutFile: string | null = null;
+  let stderrFile: string | null = null;
 
-  const redirectIndex = args.findIndex(
-    (a) => a === ">" || a === "1>"
+  const index = args.findIndex(
+    (a) => a === ">" || a === "1>" || a === "2>"
   );
 
-  if (redirectIndex !== -1) {
-    outputFile = args[redirectIndex + 1];
-    args = args.slice(0, redirectIndex);
+  if (index !== -1) {
+    const op = args[index];
+    const file = args[index + 1];
+
+    if(op === ">" || op === "1>") {
+      stdoutFile = file;
+    } else if(op === "2>") {
+      stderrFile = file;
+    }
+    args = args.slice(0, index);
   }
 
-  return { args, outputFile };
+  return { args, stdoutFile, stderrFile };
 }
 
 // ======================================== HELPERS ========================================
@@ -83,13 +92,18 @@ rl.on("line", (command) => {
   } else if (command.startsWith("echo ")) {
     let args = parseArgs(command);
 
-    const result = handleRedirection(args);
-    args = result.args;
-    const outputFile = result.outputFile;
+    const {args: newArgs, stdoutFile, stderrFile} = handleRedirection(args);
+    args = newArgs;
+    const outputFile = stdoutFile;
+    const errorFile = stderrFile;
 
     const output = args.slice(1).join(" ");
 
-    if(outputFile) {
+    if(errorFile) {
+      fs.writeFileSync(errorFile, "");
+    }
+    
+    if (outputFile) {
       fs.writeFileSync(outputFile, output + "\n");
     } else {
       console.log(output);
@@ -164,39 +178,38 @@ rl.on("line", (command) => {
   } else {
     let args = parseArgs(command);
 
-    const result = handleRedirection(args);
-    args = result.args;
-    const outputFile = result.outputFile;
+    const {args: newArgs, stdoutFile, stderrFile} = handleRedirection(args);
+    args = newArgs;
      
     const programName = args[0];
     const programArgs = args.slice(1);
 
     try {
-      if(outputFile) {
-        const out = fs.createWriteStream(outputFile, { flags: "w" });
-        const child = spawn(programName, programArgs, { stdio: ["inherit", "pipe", "inherit"] });
+      const child = spawn(programName, programArgs, {
+        stdio: [
+          "inherit",
+          stdoutFile ? "pipe" : "inherit",
+          stderrFile ? "pipe" : "inherit"
+        ],
+      });
 
-        child.stdout.pipe(out);
-
-        child.on("error", () => {
-          console.log(`${programName}: not found`);
-          rl.prompt();
-        });
-
-        child.on("close", () => {
-          rl.prompt();
-        });
-
-      } else {
-        const child = spawn(programName, programArgs, { stdio: "inherit" });
-        child.on("error", () => {
-          console.log(`${command}: not found`);
-          rl.prompt();
-        });
-        child.on("close", () => {
-          rl.prompt();
-        });
+      if(stdoutFile) {
+        const out = createWriteStream(stdoutFile, {flags: "w"});
+        child.stdout?.pipe(out);
       }
+
+      if(stderrFile) {
+        const err = createWriteStream(stderrFile, {flags: "w"});
+        child.stderr?.pipe(err);
+      }
+
+      child.on("error", () => {
+        console.log(`${command}: not found`);
+        rl.prompt();
+      });
+      child.on("close", () => {
+        rl.prompt();
+      });
     } catch (error) {
       // Ignore errors
     }
