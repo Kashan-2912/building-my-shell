@@ -6,10 +6,18 @@ import { spawn } from "child_process";
 const rl = createInterface({
   input: process.stdin,
   output: process.stdout,
+  completer: tabCompleter,
   prompt: "$ ",
 });
 
 // ======================================== HELPERS ========================================
+
+function tabCompleter(line : string) {
+  const builtins = ["echo", "exit"];
+  const hits = builtins.filter((b) => b.startsWith(line));
+  const hitsWithSpace = hits.map((hit) => `${hit} `);
+  return [hitsWithSpace.length ? hitsWithSpace : builtins, line];
+}
 
 function parseArgs(input: string): string[] {
   const res: string[] = [];
