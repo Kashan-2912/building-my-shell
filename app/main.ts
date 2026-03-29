@@ -12,8 +12,26 @@ const rl = createInterface({
 
 // ======================================== HELPERS ========================================
 
+function envVariables() : {normalized: string[]} {
+  const envVar = process.env.PATH || "";
+  const normalized = path.delimiter === ";" ? envVar.split(";") : envVar.split(":");
+
+  return { normalized };
+}
+
 function tabCompleter(line : string) {
+  const {normalized} = envVariables();
   const builtins = ["echo", "exit"];
+  for (const dir of normalized) {
+    try {
+      if (fs.existsSync(dir)) {
+        fs.accessSync(dir, fs.constants.X_OK);
+        builtins.push(...fs.readdirSync(dir));
+      }
+    } catch (error) {
+      // Ignore errors and continue searching
+    }
+  }
   const hits = builtins.filter((b) => b.startsWith(line));
   if(hits.length) {
     const hitsWithSpace = hits.map((hit) => `${hit} `);
@@ -150,11 +168,7 @@ rl.on("line", (command) => {
       rl.prompt();
       return;
     } else {
-      const envVar = process.env.PATH || "";
-
-      const normalized =
-        path.delimiter === ";" ? envVar.split(";") : envVar.split(":");
-
+      const {normalized} = envVariables();
       for (const dir of normalized) {
         const commandPath = path.join(dir, commandName);
 
