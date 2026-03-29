@@ -60,10 +60,11 @@ function parseArgs(input: string): string[] {
 function handleRedirection(args: string[]) {
   let stdoutFile: string | null = null;
   let stderrFile: string | null = null;
-  let stdoutAppened = false;
+  let stdoutAppend = false;
+  let stderrAppend = false;
 
   const index = args.findIndex(
-    (a) => a === ">" || a === "1>" || a === "2>" || a === ">>" || a === "1>>"
+    (a) => a === ">" || a === "1>" || a === "2>" || a === ">>" || a === "1>>" || a === "2>>"
   );
 
   if (index !== -1) {
@@ -72,18 +73,22 @@ function handleRedirection(args: string[]) {
 
     if(op === ">" || op === "1>") {
       stdoutFile = file;
-      stdoutAppened = false;
+      stdoutAppend = false;
     } else if (op === ">>" || op === "1>>") {
       stdoutFile = file;
-      stdoutAppened = true;
+      stdoutAppend = true;
     } else if(op === "2>") {
       stderrFile = file;
+      stdoutAppend = false;
+    } else if (op === "2>>") {
+      stderrFile = file;
+      stderrAppend = true;
     }
 
     args = args.slice(0, index);
   }
 
-  return { args, stdoutFile, stderrFile, stdoutAppened };
+  return { args, stdoutFile, stderrFile, stdoutAppend, stderrAppend };
 }
 
 // ======================================== HELPERS ========================================
@@ -97,19 +102,20 @@ rl.on("line", (command) => {
   } else if (command.startsWith("echo ")) {
     let args = parseArgs(command);
 
-    const {args: newArgs, stdoutFile, stderrFile, stdoutAppened} = handleRedirection(args);
+    const {args: newArgs, stdoutFile, stderrFile, stdoutAppend, stderrAppend} = handleRedirection(args);
     args = newArgs;
     const outputFile = stdoutFile;
     const errorFile = stderrFile;
 
     const output = args.slice(1).join(" ");
 
-    if(errorFile) {
-      fs.writeFileSync(errorFile, "");
+    if (errorFile) {
+      const flags = stderrAppend ? "a" : "w";
+      fs.closeSync(fs.openSync(errorFile, flags));
     }
     
     if (outputFile) {
-      const flags = stdoutAppened ? "a" : "w";
+      const flags = stdoutAppend ? "a" : "w";
       const stream = fs.createWriteStream(outputFile, { flags });
       stream.write(output + "\n");
       stream.end();
@@ -186,7 +192,7 @@ rl.on("line", (command) => {
   } else {
     let args = parseArgs(command);
 
-    const {args: newArgs, stdoutFile, stderrFile, stdoutAppened} = handleRedirection(args);
+    const {args: newArgs, stdoutFile, stderrFile, stdoutAppend, stderrAppend} = handleRedirection(args);
     args = newArgs;
      
     const programName = args[0];
@@ -202,12 +208,12 @@ rl.on("line", (command) => {
       });
 
       if(stdoutFile) {
-        const out = createWriteStream(stdoutFile, {flags: stdoutAppened ? "a" : "w"});
+        const out = createWriteStream(stdoutFile, {flags: stdoutAppend ? "a" : "w"});
         child.stdout?.pipe(out);
       }
 
       if(stderrFile) {
-        const err = createWriteStream(stderrFile, {flags: "w"});
+        const err = createWriteStream(stderrFile, {flags: stderrAppend ? "a" : "w"});
         child.stderr?.pipe(err);
       }
 
