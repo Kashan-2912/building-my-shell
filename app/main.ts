@@ -19,27 +19,69 @@ function envVariables() : {normalized: string[]} {
   return { normalized };
 }
 
-function tabCompleter(line : string) {
-  const {normalized} = envVariables();
+let lastPrefix = "";
+let tabCount = 0;
+
+function tabCompleter(line: string) {
   const builtins = ["echo", "exit"];
+  const { normalized } = envVariables();
+
+  const parts = line.split(" ");
+  const last = parts[parts.length - 1];
+
+  let commands = new Set<string>(builtins);
+
   for (const dir of normalized) {
     try {
       if (fs.existsSync(dir)) {
-        fs.accessSync(dir, fs.constants.X_OK);
-        builtins.push(...fs.readdirSync(dir));
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          try {
+            fs.accessSync(path.join(dir, file), fs.constants.X_OK);
+            commands.add(file);
+          } catch {}
+        }
       }
-    } catch (error) {
-      // Ignore errors and continue searching
-    }
+    } catch {}
   }
-  const hits = builtins.filter((b) => b.startsWith(line));
-  if(hits.length) {
-    const hitsWithSpace = hits.map((hit) => `${hit} `);
-    return [hitsWithSpace.length ? hitsWithSpace : builtins, line];
+
+  const hits = Array.from(commands)
+    .filter(cmd => cmd.startsWith(last))
+    .sort();
+
+  // Track TAB presses
+  if (last === lastPrefix) {
+    tabCount++;
   } else {
+    tabCount = 1;
+    lastPrefix = last;
+  }
+
+  // No matches
+  if (!hits.length) {
     process.stdout.write("\x07");
     return [[], line];
   }
+
+  // Single match → autocomplete
+  if (hits.length === 1) {
+    tabCount = 0;
+    return [[hits[0] + " "], last];
+  }
+
+  // First TAB → bell
+  if (tabCount === 1) {
+    process.stdout.write("\x07");
+    return [[], line];
+  }
+
+  // Second TAB → print matches
+  console.log("\n" + hits.join("  "));
+  process.stdout.write(`$ ${line}`);
+
+  tabCount = 0;
+
+  return [[], line];
 }
 
 function parseArgs(input: string): string[] {
