@@ -15,8 +15,13 @@ const rl = createInterface({
 function tabCompleter(line : string) {
   const builtins = ["echo", "exit"];
   const hits = builtins.filter((b) => b.startsWith(line));
-  const hitsWithSpace = hits.map((hit) => `${hit} `);
-  return [hitsWithSpace.length ? hitsWithSpace : builtins, line];
+  if(hits.length) {
+    const hitsWithSpace = hits.map((hit) => `${hit} `);
+    return [hitsWithSpace.length ? hitsWithSpace : builtins, line];
+  } else {
+    process.stdout.write("\x07");
+    return [[], line];
+  }
 }
 
 function parseArgs(input: string): string[] {
