@@ -1,6 +1,6 @@
 import path from "path";
 import { createInterface } from "readline";
-import fs, { existsSync } from "fs";
+import fs, { existsSync, createWriteStream } from "fs";
 import { spawn } from "child_process";
 
 const rl = createInterface({
@@ -57,6 +57,21 @@ function parseArgs(input: string): string[] {
   return res;
 }
 
+function handleRedirection(args: string[]) {
+  let outputFile: string | null = null;
+
+  const redirectIndex = args.findIndex(
+    (a) => a === ">" || a === "1>"
+  );
+
+  if (redirectIndex !== -1) {
+    outputFile = args[redirectIndex + 1];
+    args = args.slice(0, redirectIndex);
+  }
+
+  return { args, outputFile };
+}
+
 // ======================================== HELPERS ========================================
 
 rl.prompt();
@@ -66,8 +81,20 @@ rl.on("line", (command) => {
     rl.close();
     return;
   } else if (command.startsWith("echo ")) {
-    const args = parseArgs(command);
-    console.log(args.slice(1).join(" "));
+    let args = parseArgs(command);
+
+    const result = handleRedirection(args);
+    args = result.args;
+    const outputFile = result.outputFile;
+
+    const output = args.slice(1).join(" ");
+
+    if(outputFile) {
+      fs.writeFileSync(outputFile, output + "\n");
+    } else {
+      console.log(output);
+    }
+
     rl.prompt();
     return;
   } else if (command.startsWith("type ")) {
@@ -135,18 +162,41 @@ rl.on("line", (command) => {
       }
     }
   } else {
-    const args = parseArgs(command);
+    let args = parseArgs(command);
+
+    const result = handleRedirection(args);
+    args = result.args;
+    const outputFile = result.outputFile;
+     
     const programName = args[0];
     const programArgs = args.slice(1);
+
     try {
-      const child = spawn(programName, programArgs, { stdio: "inherit" });
-      child.on("error", () => {
-        console.log(`${command}: not found`);
-        rl.prompt();
-      });
-      child.on("close", () => {
-        rl.prompt();
-      });
+      if(outputFile) {
+        const out = fs.createWriteStream(outputFile, { flags: "w" });
+        const child = spawn(programName, programArgs, { stdio: ["inherit", "pipe", "inherit"] });
+
+        child.stdout.pipe(out);
+
+        child.on("error", () => {
+          console.log(`${programName}: not found`);
+          rl.prompt();
+        });
+
+        child.on("close", () => {
+          rl.prompt();
+        });
+
+      } else {
+        const child = spawn(programName, programArgs, { stdio: "inherit" });
+        child.on("error", () => {
+          console.log(`${command}: not found`);
+          rl.prompt();
+        });
+        child.on("close", () => {
+          rl.prompt();
+        });
+      }
     } catch (error) {
       // Ignore errors
     }
