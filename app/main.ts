@@ -2,7 +2,6 @@ import path from "path";
 import { createInterface } from "readline";
 import fs, { existsSync, createWriteStream } from "fs";
 import { spawn } from "child_process";
-import { file } from "bun";
 
 const rl = createInterface({
   input: process.stdin,
@@ -61,9 +60,10 @@ function parseArgs(input: string): string[] {
 function handleRedirection(args: string[]) {
   let stdoutFile: string | null = null;
   let stderrFile: string | null = null;
+  let stdoutAppened = false;
 
   const index = args.findIndex(
-    (a) => a === ">" || a === "1>" || a === "2>"
+    (a) => a === ">" || a === "1>" || a === "2>" || a === ">>" || a === "1>>"
   );
 
   if (index !== -1) {
@@ -72,13 +72,18 @@ function handleRedirection(args: string[]) {
 
     if(op === ">" || op === "1>") {
       stdoutFile = file;
+      stdoutAppened = false;
+    } else if (op === ">>" || op === "1>>") {
+      stdoutFile = file;
+      stdoutAppened = true;
     } else if(op === "2>") {
       stderrFile = file;
     }
+
     args = args.slice(0, index);
   }
 
-  return { args, stdoutFile, stderrFile };
+  return { args, stdoutFile, stderrFile, stdoutAppened };
 }
 
 // ======================================== HELPERS ========================================
@@ -92,7 +97,7 @@ rl.on("line", (command) => {
   } else if (command.startsWith("echo ")) {
     let args = parseArgs(command);
 
-    const {args: newArgs, stdoutFile, stderrFile} = handleRedirection(args);
+    const {args: newArgs, stdoutFile, stderrFile, stdoutAppened} = handleRedirection(args);
     args = newArgs;
     const outputFile = stdoutFile;
     const errorFile = stderrFile;
@@ -104,7 +109,10 @@ rl.on("line", (command) => {
     }
     
     if (outputFile) {
-      fs.writeFileSync(outputFile, output + "\n");
+      const flags = stdoutAppened ? "a" : "w";
+      const stream = fs.createWriteStream(outputFile, { flags });
+      stream.write(output + "\n");
+      stream.end();
     } else {
       console.log(output);
     }
@@ -178,7 +186,7 @@ rl.on("line", (command) => {
   } else {
     let args = parseArgs(command);
 
-    const {args: newArgs, stdoutFile, stderrFile} = handleRedirection(args);
+    const {args: newArgs, stdoutFile, stderrFile, stdoutAppened} = handleRedirection(args);
     args = newArgs;
      
     const programName = args[0];
@@ -194,7 +202,7 @@ rl.on("line", (command) => {
       });
 
       if(stdoutFile) {
-        const out = createWriteStream(stdoutFile, {flags: "w"});
+        const out = createWriteStream(stdoutFile, {flags: stdoutAppened ? "a" : "w"});
         child.stdout?.pipe(out);
       }
 
