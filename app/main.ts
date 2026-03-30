@@ -3,6 +3,8 @@ import { createInterface } from "readline";
 import fs, { existsSync, createWriteStream } from "fs";
 import { spawn } from "child_process";
 
+const myHistory: string[] = [];
+
 const rl = createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -54,7 +56,7 @@ function updateTabState(prefix: string) {
 }
 
 function tabCompleter(line: string) {
-  const builtins = ["echo", "exit"];
+  const builtins = ["echo", "exit", "history"];
   const { normalized } = envVariables();
 
   const parts = line.split(" ");
@@ -283,6 +285,7 @@ function handleRedirection(args: string[]) {
 rl.prompt();
 
 rl.on("line", (command) => {
+  myHistory.push(command);
   if (command === "exit") {
     rl.close();
     return;
@@ -373,6 +376,15 @@ rl.on("line", (command) => {
         // Ignore errors
       }
     }
+  } else if (command === "history") {
+    const ordered = [...myHistory];
+
+    ordered.forEach((cmd, index) => {
+      console.log(`    ${index + 1}  ${cmd}`);
+    });
+
+    rl.prompt();
+    return;
   } else {
     let args = parseArgs(command);
 
