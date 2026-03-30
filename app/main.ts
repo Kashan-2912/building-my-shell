@@ -45,24 +45,85 @@ function tabCompleter(line: string) {
     } catch {}
   }
 
-  // also check for files in that directory for matching arguments after the command
-   if (parts.length > 1) {
-    const cmd = parts[0];
+// also check for files in that directory for matching arguments after the command
+  if (parts.length > 1) {
     const argPrefix = last;
 
-    const currDirFiles = fs.readdirSync(".");
-    const argHits = currDirFiles.filter(file => file.startsWith(argPrefix)).sort();
+    if (argPrefix.includes("/")) {
+      let dir = path.dirname(argPrefix);
+      let prefix = path.basename(argPrefix);
 
-    if (argHits.length === 0) {
-      process.stdout.write("\x07");
-      return [[], line];
-    }
+      // 🔥 HANDLE trailing slash case
+      if (argPrefix.endsWith("/")) {
+        dir = argPrefix;   // full path is the directory
+        prefix = "";
+      }
 
-    if (argHits.length === 1) {
-      const newLine = line.slice(0, line.length - argPrefix.length) + argHits[0] + " ";
-      return [[newLine], line];
+      dir = dir || ".";
+
+      if (fs.existsSync(dir)) {
+        const files = fs.readdirSync(dir);
+
+        const matches = files.filter(f => f.startsWith(prefix)).sort();
+
+        if (matches.length === 0) {
+          process.stdout.write("\x07");
+          return [[], line];
+        }
+
+        // ✅ Single match
+        if (matches.length === 1) {
+          const fullPath = path.join(dir, matches[0]);
+          const isDir = fs.statSync(fullPath).isDirectory();
+
+          const newLine =
+            line.slice(0, line.length - argPrefix.length) +
+            fullPath +
+            (isDir ? "/" : " ");
+
+          return [[newLine], line];
+        }
+
+        // ✅ LCP for multiple matches
+        const commonPrefix = matches.reduce((prefix, cmd) => {
+          let i = 0;
+          while (
+            i < prefix.length &&
+            i < cmd.length &&
+            prefix[i] === cmd[i]
+          ) {
+            i++;
+          }
+          return prefix.slice(0, i);
+        });
+
+        if (commonPrefix.length > prefix.length) {
+          const fullPath = path.join(dir, commonPrefix);
+          const newLine =
+            line.slice(0, line.length - argPrefix.length) +
+            fullPath;
+
+          return [[newLine], line];
+        }
+
+        process.stdout.write("\x07");
+        return [[], line];
+      }
+    } else {
+      const currDirFiles = fs.readdirSync(".");
+      const argHits = currDirFiles.filter(file => file.startsWith(argPrefix)).sort();
+
+      if (argHits.length === 0) {
+        process.stdout.write("\x07");
+        return [[], line];
+      }
+
+      if (argHits.length === 1) {
+        const newLine = line.slice(0, line.length - argPrefix.length) + argHits[0] + " ";
+        return [[newLine], line];
+      }
     }
-   }
+  }
 
   const hits = Array.from(commands)
     .filter(cmd => cmd.startsWith(last))
