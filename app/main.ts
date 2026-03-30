@@ -385,6 +385,26 @@ rl.on("line", (command) => {
 
     rl.prompt();
     return;
+  } else if (command.startsWith("history ")) {
+    const parts = command.split(" ");
+    const num = parseInt(parts[1], 10);
+
+    if (isNaN(num) || num <= 0) {
+      console.log("history: argument must be a positive integer");
+      rl.prompt();
+      return;
+    }
+
+    // preserve numbering while slicing last N commands
+    const originalLength = myHistory.length;
+    const ordered = [...myHistory].reverse().slice(0, num).reverse();
+
+    ordered.forEach((cmd, index) => {
+      console.log(`    ${originalLength - num + 1 + index}  ${cmd}`);
+    });
+
+    rl.prompt();
+    return;
   } else {
     let args = parseArgs(command);
 
@@ -414,7 +434,7 @@ rl.on("line", (command) => {
       }
 
       child.on("error", () => {
-        console.log(`${command}: not found`);
+        console.log(`${command}: command not found`);
         rl.prompt();
       });
       child.on("close", () => {
