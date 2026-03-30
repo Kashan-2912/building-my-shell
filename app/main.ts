@@ -45,6 +45,25 @@ function tabCompleter(line: string) {
     } catch {}
   }
 
+  // also check for files in that directory for matching arguments after the command
+   if (parts.length > 1) {
+    const cmd = parts[0];
+    const argPrefix = last;
+
+    const currDirFiles = fs.readdirSync(".");
+    const argHits = currDirFiles.filter(file => file.startsWith(argPrefix)).sort();
+
+    if (argHits.length === 0) {
+      process.stdout.write("\x07");
+      return [[], line];
+    }
+
+    if (argHits.length === 1) {
+      const newLine = line.slice(0, line.length - argPrefix.length) + argHits[0] + " ";
+      return [[newLine], line];
+    }
+   }
+
   const hits = Array.from(commands)
     .filter(cmd => cmd.startsWith(last))
     .sort();
