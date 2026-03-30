@@ -110,6 +110,7 @@ function tabCompleter(line: string) {
         return [[], line];
       }
     } else {
+      const dir = ".";
       const currDirFiles = fs.readdirSync(".");
       const argHits = currDirFiles.filter(file => file.startsWith(argPrefix)).sort();
 
@@ -119,7 +120,9 @@ function tabCompleter(line: string) {
       }
 
       if (argHits.length === 1) {
-        const newLine = line.slice(0, line.length - argPrefix.length) + argHits[0] + " ";
+        const fullPath = path.join(dir, argHits[0]);
+        const isDir = fs.statSync(fullPath).isDirectory();
+        const newLine = line.slice(0, line.length - argPrefix.length) + argHits[0] + (isDir ? "/" : " ");
         return [[newLine], line];
       }
     }
