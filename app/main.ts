@@ -22,12 +22,124 @@ function envVariables() : {normalized: string[]} {
 let lastPrefix = "";
 let tabCount = 0;
 
+function formatEntries(dir: string, items: string[]) {
+  return items.map(item => {
+    const full = path.join(dir, item);
+    try {
+      return fs.statSync(full).isDirectory() ? item + "/" : item;
+    } catch {
+      return item;
+    }
+  });
+}
+
+function longestCommonPrefix(arr: string[]) {
+  return arr.reduce((prefix, cmd) => {
+    let i = 0;
+    while (
+      i < prefix.length &&
+      i < cmd.length &&
+      prefix[i] === cmd[i]
+    ) i++;
+    return prefix.slice(0, i);
+  });
+}
+
+function updateTabState(prefix: string) {
+  if (prefix === lastPrefix) tabCount++;
+  else {
+    tabCount = 1;
+    lastPrefix = prefix;
+  }
+}
+
 function tabCompleter(line: string) {
   const builtins = ["echo", "exit"];
   const { normalized } = envVariables();
 
   const parts = line.split(" ");
   const last = parts[parts.length - 1];
+
+  function handleMultiple(matches: string[]) {
+    if (tabCount === 1) {
+      process.stdout.write("\x07");
+      return [[], line];
+    }
+
+    console.log("\n" + matches.join("  "));
+    process.stdout.write(`$ ${line}`);
+
+    tabCount = 0;
+    return [[], line];
+  }
+
+  // ================= FILE / FOLDER COMPLETION =================
+
+  if (parts.length > 1) {
+    const argPrefix = last;
+
+    let dir = ".";
+    let prefix = argPrefix;
+
+    if (argPrefix.includes("/")) {
+      if (argPrefix.endsWith("/")) {
+        dir = argPrefix;
+        prefix = "";
+      } else {
+        dir = path.dirname(argPrefix);
+        prefix = path.basename(argPrefix);
+      }
+    }
+
+    dir = dir || ".";
+
+    if (fs.existsSync(dir)) {
+      const files = fs.readdirSync(dir);
+      const matches = files.filter(f => f.startsWith(prefix)).sort();
+      const formatted = formatEntries(dir, matches);
+
+      updateTabState(argPrefix);
+
+      // No matches
+      if (matches.length === 0) {
+        process.stdout.write("\x07");
+        return [[], line];
+      }
+
+      // Single match
+      if (matches.length === 1) {
+        tabCount = 0;
+
+        const fullPath = path.join(dir, matches[0]);
+        const isDir = fs.statSync(fullPath).isDirectory();
+
+        const newLine =
+          line.slice(0, line.length - argPrefix.length) +
+          fullPath +
+          (isDir ? "/" : " ");
+
+        return [[newLine], line];
+      }
+
+      // LCP
+      const lcp = longestCommonPrefix(matches);
+
+      if (lcp.length > prefix.length) {
+        tabCount = 0;
+
+        const newLine =
+          line.slice(0, line.length - argPrefix.length) +
+          path.join(dir, lcp);
+
+        return [[newLine], line];
+      }
+
+      // Multiple matches
+      return handleMultiple(formatted);
+    }
+  }
+
+  // ================= COMMAND COMPLETION =================
 
   const commands = new Set<string>(builtins);
 
@@ -45,151 +157,45 @@ function tabCompleter(line: string) {
     } catch {}
   }
 
-// also check for files in that directory for matching arguments after the command
-  if (parts.length > 1) {
-    const argPrefix = last;
-
-    if (argPrefix.includes("/")) {
-      let dir = path.dirname(argPrefix);
-      let prefix = path.basename(argPrefix);
-
-      // 🔥 HANDLE trailing slash case
-      if (argPrefix.endsWith("/")) {
-        dir = argPrefix;   // full path is the directory
-        prefix = "";
-      }
-
-      dir = dir || ".";
-
-      if (fs.existsSync(dir)) {
-        const files = fs.readdirSync(dir);
-
-        const matches = files.filter(f => f.startsWith(prefix)).sort();
-
-        if (matches.length === 0) {
-          process.stdout.write("\x07");
-          return [[], line];
-        }
-
-        // ✅ Single match
-        if (matches.length === 1) {
-          const fullPath = path.join(dir, matches[0]);
-          const isDir = fs.statSync(fullPath).isDirectory();
-
-          const newLine =
-            line.slice(0, line.length - argPrefix.length) +
-            fullPath +
-            (isDir ? "/" : " ");
-
-          return [[newLine], line];
-        }
-
-        // ✅ LCP for multiple matches
-        const commonPrefix = matches.reduce((prefix, cmd) => {
-          let i = 0;
-          while (
-            i < prefix.length &&
-            i < cmd.length &&
-            prefix[i] === cmd[i]
-          ) {
-            i++;
-          }
-          return prefix.slice(0, i);
-        });
-
-        if (commonPrefix.length > prefix.length) {
-          const fullPath = path.join(dir, commonPrefix);
-          const newLine =
-            line.slice(0, line.length - argPrefix.length) +
-            fullPath;
-
-          return [[newLine], line];
-        }
-
-        process.stdout.write("\x07");
-        return [[], line];
-      }
-    } else {
-      const dir = ".";
-      const currDirFiles = fs.readdirSync(".");
-      const argHits = currDirFiles.filter(file => file.startsWith(argPrefix)).sort();
-
-      if (argHits.length === 0) {
-        process.stdout.write("\x07");
-        return [[], line];
-      }
-
-      if (argHits.length === 1) {
-        const fullPath = path.join(dir, argHits[0]);
-        const isDir = fs.statSync(fullPath).isDirectory();
-        const newLine = line.slice(0, line.length - argPrefix.length) + argHits[0] + (isDir ? "/" : " ");
-        return [[newLine], line];
-      }
-    }
-  }
-
   const hits = Array.from(commands)
     .filter(cmd => cmd.startsWith(last))
     .sort();
 
-  // Track TAB presses
-  if (last === lastPrefix) {
-    tabCount++;
-  } else {
-    tabCount = 1;
-    lastPrefix = last;
-  }
+  updateTabState(last);
 
-  // ❌ No matches → bell
+  // No matches
   if (hits.length === 0) {
     process.stdout.write("\x07");
     return [[], line];
   }
 
-  // ✅ Single match → complete with space
+  // Single match
   if (hits.length === 1) {
     tabCount = 0;
+
     const newLine =
-      line.slice(0, line.length - last.length) + hits[0] + " ";
+      line.slice(0, line.length - last.length) +
+      hits[0] +
+      " ";
+
     return [[newLine], line];
   }
 
-  // Compute LCP
-  const commonPrefix = hits.reduce((prefix, cmd) => {
-    let i = 0;
-    while (
-      i < prefix.length &&
-      i < cmd.length &&
-      prefix[i] === cmd[i]
-    ) {
-      i++;
-    }
-    return prefix.slice(0, i);
-  });
+  // LCP
+  const lcp = longestCommonPrefix(hits);
 
-  // If LCP extends input → autocomplete
-  if (commonPrefix.length > last.length) {
+  if (lcp.length > last.length) {
     tabCount = 0;
+
     const newLine =
-      line.slice(0, line.length - last.length) + commonPrefix;
+      line.slice(0, line.length - last.length) +
+      lcp;
+
     return [[newLine], line];
   }
 
-  // No LCP progress → handle TAB behavior
-
-  // First TAB → bell
-  if (tabCount === 1) {
-    process.stdout.write("\x07");
-    return [[], line];
-  }
-
-  // Second TAB → show matches
-  console.log("\n" + hits.join("  "));
-  process.stdout.write(`$ ${line}`);
-
-  tabCount = 0;
-
-  return [[], line];
+  // Multiple matches
+  return handleMultiple(hits);
 }
 
 function parseArgs(input: string): string[] {
