@@ -318,7 +318,8 @@ rl.on("line", (command) => {
       commandName === "type" ||
       commandName === "echo" ||
       commandName === "exit" ||
-      commandName === "pwd"
+      commandName === "pwd"  ||
+      commandName === "history"
     ) {
       console.log(`${commandName} is a shell builtin`);
       rl.prompt();
