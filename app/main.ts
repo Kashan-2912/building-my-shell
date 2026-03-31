@@ -41,6 +41,34 @@ function envVariables() : {normalized: string[]} {
   return { normalized };
 }
 
+function reapJobs(jobs: Job[]) {
+  const n = jobs.length;
+
+  // Step 1: print only DONE jobs
+  jobs.forEach((job, index) => {
+    if (job.status === "Done") {
+      const cleanCommand = job.command.replace(/\s*&$/, "");
+
+      let symbol = "";
+      if (index === n - 1) symbol = "+";
+      else if (index === n - 2) symbol = "-";
+
+      const remainingSpaces = 24 - job.status.length;
+
+      console.log(
+        `[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${cleanCommand}`
+      );
+    }
+  });
+
+  // Step 2: remove them
+  for (let i = jobs.length - 1; i >= 0; i--) {
+    if (jobs[i].status === "Done") {
+      jobs.splice(i, 1);
+    }
+  }
+}
+
 function printBackgroundJobs(jobs: Job[])  {
   const n = jobs.length;
 
@@ -337,6 +365,7 @@ if(histFile && existsSync(histFile)) {
   lastAppendedIndex = myHistory.length;
 }
 
+reapJobs(jobs);
 rl.prompt();
 
 rl.on("line", (command) => {
@@ -371,6 +400,8 @@ rl.on("line", (command) => {
       console.log(output);
     }
 
+    reapJobs(jobs);
+
     rl.prompt();
     return;
   } else if (command.startsWith("type ")) {
@@ -384,6 +415,8 @@ rl.on("line", (command) => {
       commandName === "jobs"
     ) {
       console.log(`${commandName} is a shell builtin`);
+
+      reapJobs(jobs);
       rl.prompt();
       return;
     } else {
@@ -395,6 +428,8 @@ rl.on("line", (command) => {
           if (fs.existsSync(commandPath)) {
             fs.accessSync(commandPath, fs.constants.X_OK);
             console.log(`${commandName} is ${commandPath}`);
+
+            reapJobs(jobs);
             rl.prompt();
             return;
           }
@@ -404,10 +439,14 @@ rl.on("line", (command) => {
       }
 
       console.log(`${commandName}: not found`);
+
+      reapJobs(jobs);
       rl.prompt();
     }
   } else if (command === "pwd") {
     console.log(process.cwd());
+
+    reapJobs(jobs);
     rl.prompt();
     return;
   } else if (command.startsWith("cd ")) {
@@ -417,6 +456,8 @@ rl.on("line", (command) => {
       const homeDir = process.env.HOME;
       if (homeDir) {
         process.chdir(homeDir);
+
+        reapJobs(jobs);
         rl.prompt();
       }
     } else {
@@ -426,9 +467,13 @@ rl.on("line", (command) => {
       try {
         if (existsSync(targetDir)) {
           process.chdir(targetDir);
+
+          reapJobs(jobs);
           rl.prompt();
         } else {
           console.log(`cd: ${dir}: No such file or directory`);
+
+          reapJobs(jobs);
           rl.prompt();
         }
       } catch (error) {
@@ -442,6 +487,7 @@ rl.on("line", (command) => {
       console.log(`    ${index + 1}  ${cmd}`);
     });
 
+    reapJobs(jobs);
     rl.prompt();
     return;
 
@@ -474,6 +520,8 @@ rl.on("line", (command) => {
 
       if (isNaN(num) || num <= 0) {
         console.log("history: argument must be a positive integer");
+
+        reapJobs(jobs);
         rl.prompt();
         return;
       }
@@ -487,6 +535,7 @@ rl.on("line", (command) => {
       });
     }
 
+    reapJobs(jobs);
     rl.prompt();
     return;
 
@@ -533,6 +582,7 @@ rl.on("line", (command) => {
 
       console.log(`[${jobs.length}] ${child.pid}`);
 
+      reapJobs(jobs);
       rl.prompt();
       return;
     }
@@ -558,9 +608,13 @@ rl.on("line", (command) => {
 
       child.on("error", () => {
         console.log(`${command}: command not found`);
+
+        reapJobs(jobs);
         rl.prompt();
       });
       child.on("close", () => {
+
+        reapJobs(jobs);
         rl.prompt();
       });
     } catch (error) {
