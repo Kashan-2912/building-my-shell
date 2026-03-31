@@ -1,4 +1,4 @@
-import path from "path";
+import path, { normalize } from "path";
 import { createInterface } from "readline";
 import fs, { existsSync, createWriteStream, readFileSync, writeFileSync } from "fs";
 import { spawn } from "child_process";
@@ -299,6 +299,9 @@ rl.prompt();
 rl.on("line", (command) => {
   myHistory.push(command);
   if (command === "exit") {
+    if (histFile) {
+      writeFileSync(histFile, myHistory.join("\n") + "\n", "utf-8");
+    }
     rl.close();
     return;
   } else if (command.startsWith("echo ")) {
