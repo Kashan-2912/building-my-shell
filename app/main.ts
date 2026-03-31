@@ -41,6 +41,18 @@ function envVariables() : {normalized: string[]} {
   return { normalized };
 }
 
+function findSmallestJobNumber(jobs: Job[]) : number {
+  // loop through whole jobs array, and check if any of the job.id is missing from the sequence starting at 1
+  for(let i = 1; i <= jobs.length; i++) {
+    if(!jobs.some(job => job.id === i)) {
+      return i;
+    }
+  }
+
+  // if all job numbers from 1 to jobs.length are taken, return the next number in sequence
+  return jobs.length + 1;
+}
+
 function reapJobs(jobs: Job[]) {
   const n = jobs.length;
 
@@ -563,7 +575,7 @@ rl.on("line", (command) => {
       })
       
       jobs.push({
-        id: jobCounter++,
+        id: findSmallestJobNumber(jobs),
         pid: child.pid,
         command: command,
         status: "Running"
