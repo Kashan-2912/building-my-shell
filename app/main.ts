@@ -1,7 +1,7 @@
 import path, { normalize } from "path";
 import { createInterface } from "readline";
 import fs, { existsSync, createWriteStream, readFileSync, writeFileSync } from "fs";
-import { spawn } from "child_process";
+import { exec, spawn } from "child_process";
 
 const myHistory: string[] = [];
 
@@ -455,12 +455,24 @@ rl.on("line", (command) => {
      
     const programName = args[0];
 
-    if(programName === "jobs") {
+    if (programName === "jobs") {
       rl.prompt();
       return;
     }
 
+    const lastArg = args[args.length - 1];
     const programArgs = args.slice(1);
+
+    if (lastArg === "&") {
+      programArgs.pop();
+      const child = spawn(programName, programArgs, {
+        stdio: "ignore",
+      })
+      console.log(`[1] ${child.pid}`);
+
+      rl.prompt();
+      return;
+    }
 
     try {
       const child = spawn(programName, programArgs, {
