@@ -14,6 +14,24 @@ const rl = createInterface({
 
 // ======================================== HELPERS ========================================
 
+// ============= INITIALIZATIONS =============
+
+type Job = {
+  id: number;
+  pid?: number;
+  command: string;
+  status: "Running" | "Done";
+};
+
+const jobs: Job[] = [];
+
+let lastAppendedIndex = 0;
+
+let lastPrefix = "";
+let tabCount = 0;
+
+// ============= INITIALIZATIONS =============
+
 function envVariables() : {normalized: string[]} {
   const envVar = process.env.PATH || "";
   const normalized = path.delimiter === ";" ? envVar.split(";") : envVar.split(":");
@@ -21,10 +39,18 @@ function envVariables() : {normalized: string[]} {
   return { normalized };
 }
 
-let lastAppendedIndex = 0;
+function printBackgroundJobs(jobds: Job[]) {
+  const statusSpacePadding = 24;
+  const totalJobs = jobs.length;
+  const plusMarker = totalJobs === 1 ? "+" : "";
 
-let lastPrefix = "";
-let tabCount = 0;
+  jobs.forEach(job => {
+    const remainingSpaces = statusSpacePadding - job.status.length;
+    if(job.status === "Running") {
+      console.log(`[${job.id}]${plusMarker}  ${job.status}${" ".repeat(remainingSpaces)}${job.command}`);
+    }
+  })
+}
 
 function formatEntries(dir: string, items: string[]) {
   return items.map(item => {
@@ -456,6 +482,7 @@ rl.on("line", (command) => {
     const programName = args[0];
 
     if (programName === "jobs") {
+      printBackgroundJobs(jobs);
       rl.prompt();
       return;
     }
@@ -468,6 +495,14 @@ rl.on("line", (command) => {
       const child = spawn(programName, programArgs, {
         stdio: "inherit",
       })
+      
+      jobs.push({
+        id: jobs.length + 1,
+        pid: child.pid,
+        command: command,
+        status: "Running"
+      })
+
       console.log(`[1] ${child.pid}`);
 
       rl.prompt();
