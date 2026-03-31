@@ -284,6 +284,16 @@ function handleRedirection(args: string[]) {
 
 // ======================================== HELPERS ========================================
 
+const histFile = process.env.HISTFILE;
+
+if(histFile && existsSync(histFile)) {
+  const fileContents = readFileSync(histFile, "utf-8");
+  const lines = fileContents.split("\n").filter(line => line.trim() !== "");
+  myHistory.push(...lines);
+
+  lastAppendedIndex = myHistory.length;
+}
+
 rl.prompt();
 
 rl.on("line", (command) => {
@@ -390,15 +400,15 @@ rl.on("line", (command) => {
 
   } else if (command.startsWith("history ")) {
     const parts = command.split(" ");
-    const filePath = parts[2];
-    
     
     if(parts[1] === "-r") {
+      const filePath = parts[2];
       const fileContents = readFileSync(filePath, "utf-8");
       const lines = fileContents.split("\n").filter(line => line.trim() !== "");
       myHistory.push(...lines);
 
     } else if (parts[1] === "-w") {
+      const filePath = parts[2];
         writeFileSync(filePath, myHistory.join("\n") + "\n", "utf-8");
         
         lastAppendedIndex = myHistory.length;
@@ -406,6 +416,7 @@ rl.on("line", (command) => {
       const newCommands = myHistory.slice(lastAppendedIndex);
 
       if(newCommands.length > 0) {
+        const filePath = parts[2];
         writeFileSync(filePath, newCommands.join("\n") + "\n", {flag: "a", encoding: "utf-8"});
 
         // update pointer to last appended command
