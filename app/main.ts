@@ -1,6 +1,6 @@
 import path from "path";
 import { createInterface } from "readline";
-import fs, { existsSync, createWriteStream, readFileSync } from "fs";
+import fs, { existsSync, createWriteStream, readFileSync, writeFileSync } from "fs";
 import { spawn } from "child_process";
 
 const myHistory: string[] = [];
@@ -393,6 +393,17 @@ rl.on("line", (command) => {
       const fileContents = readFileSync(filePath, "utf-8");
       const lines = fileContents.split("\n").filter(line => line.trim() !== "");
       myHistory.push(...lines);
+
+    } else if (parts[1] === "-w") {
+      const filePath = parts[2];
+        writeFileSync(filePath, myHistory.join("\n"), "utf-8");
+        
+        // add trailing newline for better readability if file is viewed in terminal
+        writeFileSync(filePath, "\n", { flag: "a" });
+        
+        rl.prompt();
+        return;
+
     } else {
       const num = parseInt(parts[1], 10);
 
