@@ -25,7 +25,7 @@ type Job = {
 
 const jobs: Job[] = [];
 
-let statusChanged = false;
+let jobCounter = 1;
 
 let lastAppendedIndex = 0;
 
@@ -41,9 +41,10 @@ function envVariables() : {normalized: string[]} {
   return { normalized };
 }
 
-function printBackgroundJobs(jobs: Job[]) {
+function printBackgroundJobs(jobs: Job[])  {
   const n = jobs.length;
 
+  // step 1: // Step 1: Print all jobs (including Done ones ONCE)
   jobs.forEach((job, index) => {
     const cleanCommand = job.command.replace(/\s*&$/, "");
     let symbol = "";
@@ -56,12 +57,16 @@ function printBackgroundJobs(jobs: Job[]) {
     if(job.status === "Running") {
       console.log(`[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${job.command}`);
     } else {
-      if(statusChanged) {
-        console.log(`[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${cleanCommand}`);
-        statusChanged = false;
-      }
+      console.log(`[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${cleanCommand}`);
     }
   });
+
+  // step 2: remove ALL jobs that are done and printed once
+  for (let i = jobs.length - 1; i >= 0; i--) {
+    if(jobs[i].status === "Done") {
+      jobs.splice(i, 1);
+    }
+  }
 }
 
 function formatEntries(dir: string, items: string[]) {
@@ -509,7 +514,7 @@ rl.on("line", (command) => {
       })
       
       jobs.push({
-        id: jobs.length + 1,
+        id: jobCounter++,
         pid: child.pid,
         command: command,
         status: "Running"
@@ -523,7 +528,6 @@ rl.on("line", (command) => {
         const job = jobs.find(j => j.pid === child.pid);
         if (job) {
           job.status = "Done";
-          statusChanged = true;
         }
       });
 
