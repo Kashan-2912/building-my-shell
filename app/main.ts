@@ -1,6 +1,6 @@
 import path from "path";
 import { createInterface } from "readline";
-import fs, { existsSync, createWriteStream } from "fs";
+import fs, { existsSync, createWriteStream, readFileSync } from "fs";
 import { spawn } from "child_process";
 
 const myHistory: string[] = [];
@@ -387,21 +387,29 @@ rl.on("line", (command) => {
     return;
   } else if (command.startsWith("history ")) {
     const parts = command.split(" ");
-    const num = parseInt(parts[1], 10);
+    
+    if(parts[1] === "-r") {
+      const filePath = parts[2];
+      const fileContents = readFileSync(filePath, "utf-8");
+      const lines = fileContents.split("\n").filter(line => line.trim() !== "");
+      myHistory.push(...lines);
+    } else {
+      const num = parseInt(parts[1], 10);
 
-    if (isNaN(num) || num <= 0) {
-      console.log("history: argument must be a positive integer");
-      rl.prompt();
-      return;
+      if (isNaN(num) || num <= 0) {
+        console.log("history: argument must be a positive integer");
+        rl.prompt();
+        return;
+      }
+
+      // preserve numbering while slicing last N commands
+      const originalLength = myHistory.length;
+      const ordered = [...myHistory].reverse().slice(0, num).reverse();
+
+      ordered.forEach((cmd, index) => {
+        console.log(`    ${originalLength - num + 1 + index}  ${cmd}`);
+      });
     }
-
-    // preserve numbering while slicing last N commands
-    const originalLength = myHistory.length;
-    const ordered = [...myHistory].reverse().slice(0, num).reverse();
-
-    ordered.forEach((cmd, index) => {
-      console.log(`    ${originalLength - num + 1 + index}  ${cmd}`);
-    });
 
     rl.prompt();
     return;
