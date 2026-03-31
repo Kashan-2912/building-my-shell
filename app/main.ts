@@ -337,7 +337,8 @@ rl.on("line", (command) => {
       commandName === "echo" ||
       commandName === "exit" ||
       commandName === "pwd"  ||
-      commandName === "history"
+      commandName === "history" ||
+      commandName === "jobs"
     ) {
       console.log(`${commandName} is a shell builtin`);
       rl.prompt();
@@ -453,6 +454,12 @@ rl.on("line", (command) => {
     args = newArgs;
      
     const programName = args[0];
+
+    if(programName === "jobs") {
+      rl.prompt();
+      return;
+    }
+
     const programArgs = args.slice(1);
 
     try {
