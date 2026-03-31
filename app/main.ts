@@ -25,6 +25,8 @@ type Job = {
 
 const jobs: Job[] = [];
 
+let statusChanged = false;
+
 let lastAppendedIndex = 0;
 
 let lastPrefix = "";
@@ -43,16 +45,22 @@ function printBackgroundJobs(jobs: Job[]) {
   const n = jobs.length;
 
   jobs.forEach((job, index) => {
-    let symbol = " ";
+    const cleanCommand = job.command.replace(/\s*&$/, "");
+    let symbol = "";
 
     if (index === n - 1) symbol = "+";
     else if (index === n - 2) symbol = "-";
 
     const remainingSpaces = 24 - job.status.length;
 
-    console.log(
-      `[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${job.command}`
-    );
+    if(job.status === "Running") {
+      console.log(`[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${job.command}`);
+    } else {
+      if(statusChanged) {
+        console.log(`[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${cleanCommand}`);
+        statusChanged = false;
+      }
+    }
   });
 }
 
@@ -509,6 +517,14 @@ rl.on("line", (command) => {
 
       child.on("error", () => {
         console.log(`${programName}: command not found`);
+      });
+
+      child.on("close", () => {
+        const job = jobs.find(j => j.pid === child.pid);
+        if (job) {
+          job.status = "Done";
+          statusChanged = true;
+        }
       });
 
       console.log(`[${jobs.length}] ${child.pid}`);
