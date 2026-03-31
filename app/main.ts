@@ -21,6 +21,8 @@ function envVariables() : {normalized: string[]} {
   return { normalized };
 }
 
+let lastAppendedIndex = 0;
+
 let lastPrefix = "";
 let tabCount = 0;
 
@@ -385,25 +387,30 @@ rl.on("line", (command) => {
 
     rl.prompt();
     return;
+
   } else if (command.startsWith("history ")) {
     const parts = command.split(" ");
+    const filePath = parts[2];
+    
     
     if(parts[1] === "-r") {
-      const filePath = parts[2];
       const fileContents = readFileSync(filePath, "utf-8");
       const lines = fileContents.split("\n").filter(line => line.trim() !== "");
       myHistory.push(...lines);
 
     } else if (parts[1] === "-w") {
-      const filePath = parts[2];
-        writeFileSync(filePath, myHistory.join("\n"), "utf-8");
+        writeFileSync(filePath, myHistory.join("\n") + "\n", "utf-8");
         
-        // add trailing newline for better readability if file is viewed in terminal
-        writeFileSync(filePath, "\n", { flag: "a" });
-        
-        rl.prompt();
-        return;
+        lastAppendedIndex = myHistory.length;
+    } else if (parts[1] === "-a") {
+      const newCommands = myHistory.slice(lastAppendedIndex);
 
+      if(newCommands.length > 0) {
+        writeFileSync(filePath, newCommands.join("\n") + "\n", {flag: "a", encoding: "utf-8"});
+
+        // update pointer to last appended command
+        lastAppendedIndex = myHistory.length;
+      }
     } else {
       const num = parseInt(parts[1], 10);
 
@@ -424,6 +431,7 @@ rl.on("line", (command) => {
 
     rl.prompt();
     return;
+
   } else {
     let args = parseArgs(command);
 
