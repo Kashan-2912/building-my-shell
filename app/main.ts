@@ -39,17 +39,21 @@ function envVariables() : {normalized: string[]} {
   return { normalized };
 }
 
-function printBackgroundJobs(jobds: Job[]) {
-  const statusSpacePadding = 24;
-  const totalJobs = jobs.length;
-  const plusMarker = totalJobs === 1 ? "+" : "";
+function printBackgroundJobs(jobs: Job[]) {
+  const n = jobs.length;
 
-  jobs.forEach(job => {
-    const remainingSpaces = statusSpacePadding - job.status.length;
-    if(job.status === "Running") {
-      console.log(`[${job.id}]${plusMarker}  ${job.status}${" ".repeat(remainingSpaces)}${job.command}`);
-    }
-  })
+  jobs.forEach((job, index) => {
+    let symbol = " ";
+
+    if (index === n - 1) symbol = "+";
+    else if (index === n - 2) symbol = "-";
+
+    const remainingSpaces = 24 - job.status.length;
+
+    console.log(
+      `[${job.id}]${symbol}  ${job.status}${" ".repeat(remainingSpaces)}${job.command}`
+    );
+  });
 }
 
 function formatEntries(dir: string, items: string[]) {
@@ -501,9 +505,13 @@ rl.on("line", (command) => {
         pid: child.pid,
         command: command,
         status: "Running"
-      })
+      });
 
-      console.log(`[1] ${child.pid}`);
+      child.on("error", () => {
+        console.log(`${programName}: command not found`);
+      });
+
+      console.log(`[${jobs.length}] ${child.pid}`);
 
       rl.prompt();
       return;
