@@ -466,7 +466,7 @@ rl.on("line", (command) => {
     if (lastArg === "&") {
       programArgs.pop();
       const child = spawn(programName, programArgs, {
-        stdio: "ignore",
+        stdio: "inherit",
       })
       console.log(`[1] ${child.pid}`);
 
