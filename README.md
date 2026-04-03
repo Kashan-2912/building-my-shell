@@ -1,5 +1,7 @@
 [![progress-banner](https://backend.codecrafters.io/progress/shell/59453c62-b832-4c87-9619-8611a916c3d4)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
 
+TIME TAKEN: 10 days
+
 This is a starting point for TypeScript solutions to the
 ["Build Your Own Shell" Challenge](https://app.codecrafters.io/courses/shell/overview).
 
